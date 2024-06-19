@@ -10,6 +10,7 @@ public static class ServiceExtension
     {
         var settings = service.GetOptions<ElasticsearchSettings>(nameof(ElasticsearchSettings));
         var settingElasticsearch = new ConnectionSettings(new Uri(settings.Uri))
+            .BasicAuthentication("elastic", "admin1234")
             .PrettyJson()
             .DefaultIndex(settings.DefaultIndex);
         var client = new ElasticClient(settingElasticsearch);

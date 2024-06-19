@@ -33,6 +33,15 @@ namespace ElasticsearchAPI.Controllers
             await _elasticSearchService.IndexDocumentAsync("product", product, p => p.Id);
             return Ok(product);
         }
+        
+        [HttpPost("CreateProducts")]
+        public async Task<IActionResult> CreateProducts(IEnumerable<Product> product)
+        {
+            await _context.Products.AddRangeAsync(product);
+            await _context.SaveChangesAsync();
+            await _elasticSearchService.IndexDocumentRangeAsync("product", product, p => p.Id);
+            return Ok(product);
+        }
 
         [HttpGet("SearchProduct")]
         public async Task<ActionResult<PagedList<Product>>> SearchProduct([FromQuery] string key,

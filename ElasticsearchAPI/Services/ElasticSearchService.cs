@@ -44,19 +44,28 @@ public class ElasticSearchService<T> : IElasticSearchService<T> where T : class
     public async Task<PagedList<T>> SearchAsync(string indexName, PagingRequestParameters pagingRequestParameters,
         string key, string value)
     {
+        object searchValue = value;
+        if (int.TryParse(value, out int intValue))
+        {
+            searchValue = intValue;
+        }
+
         var response = await _elasticClient.SearchAsync<T>(s => s
             .Index(indexName)
             .Query(q => q
-                .QueryString(d => d
-                    .Query('*' + value + '*')
-                    .Fields(f => f
-                        .Field(key)
+                .Bool(b => b
+                    .Must(m => m
+                        .QueryString(d => d
+                            .Query(searchValue is int ? searchValue.ToString() : '*' + searchValue.ToString() + '*')
+                            .Fields(f => f
+                                .Field(key)
+                            )
+                        )
                     )
                 )
             )
             .Size(pagingRequestParameters.PageSize)
         );
-
         if (!response.IsValid)
         {
             throw new Exception($"Search query failed: {response.OriginalException.Message}");
@@ -79,5 +88,22 @@ public class ElasticSearchService<T> : IElasticSearchService<T> where T : class
         }
 
         return response.Result.ToString();
+    }
+
+    public async Task<IEnumerable<string>> IndexDocumentRangeAsync(string indexName, IEnumerable<T> document, Func<T, int> idExtractor)
+    {
+        var response = await _elasticClient.BulkAsync(b => b
+            .Index(indexName)
+            .IndexMany(document)
+        );
+
+        if (!response.IsValid)
+        {
+            // Xử lý lỗi nếu có
+            throw new Exception($"Bulk indexing failed: {response.OriginalException.Message}");
+        }
+
+        // Trả về danh sách các ID của các tài liệu đã được index thành công
+        return response.Items.Select(i => i.Id);
     }
 }
